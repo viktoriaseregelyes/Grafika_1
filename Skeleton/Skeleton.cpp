@@ -60,28 +60,29 @@ const char * const fragmentSource = R"(
 )";
 
 GPUProgram gpuProgram;
-unsigned int vao, vbo;
+//unsigned int vao, vbo;
 float p = 0, q = 0;
 
 class Atom {
 public: float charge = (1,6 * rand()) % 5;
-		int quantity = (1 * rand()) % 100;
+		float quantity = 50;
 		float x, y, z;
 		const int nTesselatedVertices = 50;
 		std::vector<vec4> points;
+		unsigned int vao, vbo;
+		vec4 center;
 
-	Atom() {
-		x = 0.0f; y = 0.0f; z = 0.0f;
-	}
-
-	Atom(GLfloat x1, GLfloat y1, GLfloat z1) {
+	Atom(float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
 		x = x1; y = y1; z = z1;
+		center = vec4( x / quantity, y / quantity, z / quantity, 1);
 	}
 
 public:
+	vec4 getPoint() { return vec4(x,y,z,1); }
 	float getX() { return x; }
 	float getY() { return y; }
 	float getZ() { return z; }
+	vec4 getCenter() { return center; }
 
 	void create() {
 		for (int i = 0; i < nTesselatedVertices; i++) {
@@ -101,31 +102,37 @@ public:
 
 	void drawAtom() {
 		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec4), &points[0], GL_STATIC_DRAW);
+		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
 	}
 };
 
 class Line {
 public: std::vector<vec4> points;
-	    std::vector<float> data;
+		unsigned int vao, vbo;
 
 	  Line(Atom a, Atom b) {
-		  points.push_back(vec4(a.getX(), a.getY(), a.getZ(), 1));
-		  points.push_back(vec4(b.getX(), b.getY(), a.getZ(), 1));
+		  points.push_back(a.getCenter());
+		  points.push_back(b.getCenter());
+		  points.push_back(b.getCenter());
+		  points.push_back(b.getCenter());
 	  }
 
 public:
 	void create() {
+		int location = glGetUniformLocation(gpuProgram.getId(), "color");
+		glUniform3f(location, 1.0f, 1.0f, 1.0f);
+
 		glGenVertexArrays(1, &vao);
 		glBindVertexArray(vao);
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), NULL);
-		glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(vec4), &points[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, points.size() * sizeof(vec4), NULL);
 	}
 	
 	void drawLine() {
+		glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(vec4), &points[0], GL_STATIC_DRAW);
 		glBindVertexArray(vao);
 		glDrawArrays(GL_LINE_STRIP, 0, points.size());
 	}
@@ -153,18 +160,17 @@ void onDisplay() {
 	location = glGetUniformLocation(gpuProgram.getId(), "MVP");
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
 	
-	glBindVertexArray(vao);
-	Atom a(5.0f, 5.0f, 0.0f);
-	a.create();
-	a.drawAtom();
-	Atom b(10.0f, 10.0f, 0.0f);
-	b.create();
-	b.drawAtom();
+	//glBindVertexArray(vao);
+	Atom a(6.0f, 8.0f, 0.0f);
+	Atom b(2.0f, 1.0f, 0.0f);
 	Line l(a, b);
 	l.create();
 	l.drawLine();
+	a.create();
+	a.drawAtom();
+	b.create();
+	b.drawAtom();
 	glutSwapBuffers();
-	
 }
 
 void onKeyboard(unsigned char key, int pX, int pY) {
@@ -173,9 +179,9 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 		case 'd': q -= 0.1f; break;
 		case 'x': p += 0.1f; break;
 		case 'e': p -= 0.1f; break;
+		// ide kéne a SPACE hatására mi történik dolog
 	}
-	glutPostRedisplay();
-	// ide kéne a SPACE hatására mi történik dolog
+	glutPostRedisplay();	
 }
 
 void onKeyboardUp(unsigned char key, int pX, int pY) {
