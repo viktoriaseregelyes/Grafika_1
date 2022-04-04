@@ -119,7 +119,7 @@ public:
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, points.size() * sizeof(vec4), NULL);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec4), NULL);
 	}
 	
 	void drawLine() {
