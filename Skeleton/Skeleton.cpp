@@ -65,13 +65,14 @@ unsigned int vao;
 
 class Atom {
 public: float charge = (1,6 * rand()) % 5;
-		float quantity = 50;
+		float quantity = 1;
 		float x, y, z;
 		const int nTesselatedVertices = 60;
 		std::vector<vec4> points;
 		unsigned int vbo;
 
-	Atom(float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
+	Atom(float q, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
+		quantity *= q;
 		x = x1; y = y1; z = z1;
 	}
 
@@ -86,8 +87,6 @@ public:
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
 		glUniform3f(location, 0.0f, 0.0f, 1 / charge);
 
-		glGenVertexArrays(1, &vao);
-		glBindVertexArray(vao);
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
@@ -114,8 +113,6 @@ public:
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
 		glUniform3f(location, 1.0f, 1.0f, 1.0f);
 
-		glGenVertexArrays(1, &vao);
-		glBindVertexArray(vao);
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
@@ -128,9 +125,25 @@ public:
 	}
 };
 
+class Molekula {
+public: std::vector<Atom> atoms;
+		std::vector<Line> lines;
+		unsigned int vbo[2];
+
+	Molekula() {
+		int atomNumber = (int) rand() % 6 + 2;
+		for (int i = 0; i < atomNumber; i++) {
+			atoms.push_back(Atom(50));
+		}
+	}
+};
+
 void onInitialization() {
 	glViewport(0, 0, 600, 600);
 	glutInitWindowSize(600, 600);
+
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
 }
@@ -148,8 +161,8 @@ void onDisplay() {
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
 	
 	glBindVertexArray(vao);
-	Atom a(6.0f, 8.0f, 0.0f);
-	Atom b(10.0f, 0.0f, 0.0f);
+	Atom a(50, 6.0f, 8.0f, 0.0f);
+	Atom b(50, 10.0f, 0.0f, 0.0f);
 	Line l(a, b);
 	l.create();
 	l.drawLine();
