@@ -60,29 +60,23 @@ const char * const fragmentSource = R"(
 )";
 
 GPUProgram gpuProgram;
-//unsigned int vao, vbo;
 float p = 0, q = 0;
+unsigned int vao;
 
 class Atom {
 public: float charge = (1,6 * rand()) % 5;
 		float quantity = 50;
 		float x, y, z;
-		const int nTesselatedVertices = 50;
+		const int nTesselatedVertices = 60;
 		std::vector<vec4> points;
-		unsigned int vao, vbo;
-		vec4 center;
+		unsigned int vbo;
 
 	Atom(float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
 		x = x1; y = y1; z = z1;
-		center = vec4( x / quantity, y / quantity, z / quantity, 1);
 	}
 
 public:
-	vec4 getPoint() { return vec4(x,y,z,1); }
-	float getX() { return x; }
-	float getY() { return y; }
-	float getZ() { return z; }
-	vec4 getCenter() { return center; }
+	vec4 getCenter() { return vec4(x / quantity, y / quantity, z / quantity, 1); }
 
 	void create() {
 		for (int i = 0; i < nTesselatedVertices; i++) {
@@ -102,19 +96,16 @@ public:
 
 	void drawAtom() {
 		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec4), &points[0], GL_STATIC_DRAW);
-		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
 	}
 };
 
 class Line {
 public: std::vector<vec4> points;
-		unsigned int vao, vbo;
+		unsigned int vbo;
 
 	  Line(Atom a, Atom b) {
 		  points.push_back(a.getCenter());
-		  points.push_back(b.getCenter());
-		  points.push_back(b.getCenter());
 		  points.push_back(b.getCenter());
 	  }
 
@@ -133,8 +124,7 @@ public:
 	
 	void drawLine() {
 		glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(vec4), &points[0], GL_STATIC_DRAW);
-		glBindVertexArray(vao);
-		glDrawArrays(GL_LINE_STRIP, 0, points.size());
+		glDrawArrays(GL_LINES, 0, points.size());
 	}
 };
 
@@ -149,20 +139,17 @@ void onDisplay() {
 	glClearColor(0.4f, 0.4f, 0.4f, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	int location = glGetUniformLocation(gpuProgram.getId(), "color");
-	//glUniform3f(location, 1.0f, 1.0f, 1.0f);
-
 	float MVPtransf[4][4] = { 1, 0, 0, 0,
 							  0, 1, 0, 0,
 							  0, 0, 1, 0,
 							  q, p, 0, 1 };
 
-	location = glGetUniformLocation(gpuProgram.getId(), "MVP");
+	int location = glGetUniformLocation(gpuProgram.getId(), "MVP");
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
 	
-	//glBindVertexArray(vao);
+	glBindVertexArray(vao);
 	Atom a(6.0f, 8.0f, 0.0f);
-	Atom b(2.0f, 1.0f, 0.0f);
+	Atom b(10.0f, 0.0f, 0.0f);
 	Line l(a, b);
 	l.create();
 	l.drawLine();
