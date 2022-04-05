@@ -74,6 +74,11 @@ public: float charge;
 	Atom(float c, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
 		charge = 1 / c;
 		x = x1; y = y1; z = z1;
+
+		for (int i = 0; i < nTesselatedVertices; i++) {
+			float phi = i * 2.0f * M_PI / 50;
+			points.push_back(vec4((cosf(phi) + x) / quantity, (sinf(phi) + y) / quantity, z / quantity, 1));
+		}
 	}
 
 public:
@@ -87,19 +92,12 @@ public:
 			glUniform3f(location, charge, 0.0f, 0.0f);
 	}
 
-	void create() {
-		for (int i = 0; i < nTesselatedVertices; i++) {
-			float phi = i * 2.0f * M_PI / 50;
-			points.push_back(vec4((cosf(phi) + x) / quantity, (sinf(phi) + y) / quantity, z / quantity, 1));
-		}
-		
+	void drawAtom() {
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), NULL);
-	}
 
-	void drawAtom() {
 		color();
 		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec4), &points[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
@@ -115,18 +113,16 @@ public: std::vector<vec4> points;
 		  points.push_back(b.getCenter());
 	  }
 
-public:
-	void create() {
-		int location = glGetUniformLocation(gpuProgram.getId(), "color");
-		glUniform3f(location, 1.0f, 1.0f, 1.0f);
-
+public:	
+	void drawLine() {
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec4), NULL);
-	}
-	
-	void drawLine() {
+
+		int location = glGetUniformLocation(gpuProgram.getId(), "color");
+		glUniform3f(location, 1.0f, 1.0f, 1.0f);
+
 		glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(vec4), &points[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_LINES, 0, points.size());
 	}
@@ -137,16 +133,21 @@ public: std::vector<Atom> atoms;
 		std::vector<Line> lines;
 		std::vector<float> charges;
 		int atomNumber = (int)rand() % 6 + 2;
-		int lineNumber;
+		int lineNumber = 0;
 
 	Molekula() {
 		ChargeMaker();
 		for (int i = 0; i < atomNumber; i++)
 			atoms.push_back(Atom(charges.at(i), makePoint(), makePoint(), 0.0f));
 		
-		/*for () {
-
-		}*/
+		for (int i = 0; i < atomNumber; i++) {
+			int another = (int)rand() % atomNumber;
+			while (another == i)
+				another = (int)rand() % atomNumber;
+			
+			lines.push_back(Line(atoms.at(i),atoms.at(another)));
+			lineNumber++;
+		}
 	}
 
 public:
@@ -166,27 +167,24 @@ public:
 		} while (sum != 0);
 	}
 
-	void create() {
-		//atomok és lineok create-je
-		for (int i = 0; i < atomNumber; i++)
-			atoms[i].create();
-
-	}
-
 	void drawMolekula() {
-		//atomok és lineok kirajzolása
+		for (int i = 0; i < lineNumber; i++)
+			lines[i].drawLine();
+
 		for (int i = 0; i < atomNumber; i++)
 			atoms[i].drawAtom();
 	}
-
 };
 
-//molekula tömb
-Molekula m = Molekula();
+std::vector<Molekula> molecules;
+int molekulaNumber = 0;
 
 void onInitialization() {
 	glViewport(0, 0, 600, 600);
 	glutInitWindowSize(600, 600);
+
+	molecules.push_back(Molekula());
+	molekulaNumber++;
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -207,11 +205,10 @@ void onDisplay() {
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
 	
 	glBindVertexArray(vao);
-	/*
-	* draw
-	*/
-	m.create();
-	m.drawMolekula();
+	
+	for (int i = 0; i < molekulaNumber; i++)
+		molecules[i].drawMolekula();
+
 	glutSwapBuffers();
 }
 
@@ -221,7 +218,7 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 		case 'd': q -= 0.1f; break;
 		case 'x': p += 0.1f; break;
 		case 'e': p -= 0.1f; break;
-		// ide kéne a SPACE hatására mi történik dolog
+		case ' ':molecules.push_back(Molekula()); molekulaNumber++; break;
 	}
 	glutPostRedisplay();	
 }
