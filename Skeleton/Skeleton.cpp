@@ -65,7 +65,7 @@ unsigned int vao;
 
 class Atom {
 public: float charge;
-		float quantity = -50 + (rand() % 100);
+		float quantity = -70 + (rand() % 140);
 		float x, y, z;
 		const int nTesselatedVertices = 60;
 		std::vector<vec4> points;
@@ -102,6 +102,10 @@ public:
 		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec4), &points[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
 	}
+
+	~Atom() {
+		glDeleteBuffers(1, &vbo);
+	}
 };
 
 class Line {
@@ -124,7 +128,11 @@ public:
 		glUniform3f(location, 1.0f, 1.0f, 1.0f);
 
 		glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(vec4), &points[0], GL_STATIC_DRAW);
-		glDrawArrays(GL_LINES, 0, points.size());
+		glDrawArrays(GL_LINE_STRIP, 0, points.size());
+	}
+
+	~Line() {
+		glDeleteBuffers(1, &vbo);
 	}
 };
 
@@ -137,21 +145,20 @@ public: std::vector<Atom> atoms;
 
 	Molekula() {
 		ChargeMaker();
-		for (int i = 0; i < atomNumber; i++)
-			atoms.push_back(Atom(charges.at(i), makePoint(), makePoint(), 0.0f));
-		
+		int random;
 		for (int i = 0; i < atomNumber; i++) {
-			int another = (int)rand() % atomNumber;
-			while (another == i)
-				another = (int)rand() % atomNumber;
-			
-			lines.push_back(Line(atoms.at(i),atoms.at(another)));
-			lineNumber++;
+			atoms.push_back(Atom(charges.at(i), MakePoint(), MakePoint(), 0.0f));
+
+			if (i > 0) {
+				random = (int)(rand() % i);
+				lines.push_back(Line(atoms.at(i), atoms.at(random)));
+				lineNumber++;
+			}
 		}
 	}
 
 public:
-	float makePoint() { return -25 + (rand() % 50); }
+	float MakePoint() { return -10 + (rand() % 20); }
 
 	void ChargeMaker() {
 		float sum;
@@ -207,7 +214,7 @@ void onDisplay() {
 	glBindVertexArray(vao);
 	
 	for (int i = 0; i < molekulaNumber; i++)
-		molecules[i].drawMolekula();
+		molecules.at(i).drawMolekula();
 
 	glutSwapBuffers();
 }
@@ -218,7 +225,7 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 		case 'd': q -= 0.1f; break;
 		case 'x': p += 0.1f; break;
 		case 'e': p -= 0.1f; break;
-		case ' ':molecules.push_back(Molekula()); molekulaNumber++; break;
+		case ' ': molecules.push_back(Molekula()); molekulaNumber++; break;
 	}
 	glutPostRedisplay();	
 }
