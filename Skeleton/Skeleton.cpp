@@ -127,8 +127,16 @@ public:
 		points.push_back(vec4(x1, y1, z1));
 		float dx = abs(x1 - x2) * 0.01, dy = abs(y1 - y2) * 0.01, dz = abs(z1 - z2) * 0.01;
 		float x = x1, y = y1, z = z1;
+		bool xmi = false, ymi = false, zmi = false;
 
-		while (x <= x2 && y <= y2 && z <= z2) {
+		if (x < x2)
+			xmi = true;
+		if (y < y2)
+			ymi = true;
+		if (z < z2)
+			zmi = true;
+
+		while (((xmi && x <= x2) || (!xmi && x >= x2)) && ((ymi && y <= y2) || (!ymi && y >= y2)) && ((zmi && z <= z2) || (!zmi && z >= z2))) {
 		if (x < x2)
 			x += dx;
 		else
