@@ -64,15 +64,15 @@ float p = 0, q = 0;
 unsigned int vao;
 
 class Atom {
-public: float charge = -10 + (rand() % 20);
-		float quantity = -30 + (rand() % 60);
+public: float charge;
+		float quantity = -50 + (rand() % 100);
 		float x, y, z;
 		const int nTesselatedVertices = 60;
 		std::vector<vec4> points;
 		unsigned int vbo;
 
 	Atom(float c, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
-		charge *= c;
+		charge = 1 / c;
 		x = x1; y = y1; z = z1;
 	}
 
@@ -82,9 +82,9 @@ public:
 	void color() {
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
 		if (charge < 0)
-			glUniform3f(location, 0.0f, 0.0f, 1 / (-charge));
+			glUniform3f(location, 0.0f, 0.0f, -charge);
 		else
-			glUniform3f(location, 1 / charge, 0.0f, 0.0f);
+			glUniform3f(location, charge, 0.0f, 0.0f);
 	}
 
 	void create() {
@@ -92,8 +92,7 @@ public:
 			float phi = i * 2.0f * M_PI / 50;
 			points.push_back(vec4((cosf(phi) + x) / quantity, (sinf(phi) + y) / quantity, z / quantity, 1));
 		}
-		color();
-
+		
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
@@ -101,6 +100,7 @@ public:
 	}
 
 	void drawAtom() {
+		color();
 		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec4), &points[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
 	}
@@ -135,18 +135,54 @@ public:
 class Molekula {
 public: std::vector<Atom> atoms;
 		std::vector<Line> lines;
-		unsigned int vbo[2];
+		std::vector<float> charges;
+		int atomNumber = (int)rand() % 6 + 2;
+		int lineNumber;
 
 	Molekula() {
-		int atomNumber = (int) rand() % 6 + 2;
-		for (int i = 0; i < atomNumber; i++) {
-			atoms.push_back(Atom(1));
-		}
+		ChargeMaker();
+		for (int i = 0; i < atomNumber; i++)
+			atoms.push_back(Atom(charges.at(i), makePoint(), makePoint(), 0.0f));
+		
+		/*for () {
+
+		}*/
 	}
+
+public:
+	float makePoint() { return -25 + (rand() % 50); }
+
+	void ChargeMaker() {
+		float sum;
+		float num;
+		do {
+			charges.clear();
+			sum = 0;
+			for (int i = 0; i < atomNumber;i++) {
+				num = (float)(-10 + (rand() % 20));
+				charges.push_back(num);
+				sum += num;
+			}
+		} while (sum != 0);
+	}
+
+	void create() {
+		//atomok és lineok create-je
+		for (int i = 0; i < atomNumber; i++)
+			atoms[i].create();
+
+	}
+
+	void drawMolekula() {
+		//atomok és lineok kirajzolása
+		for (int i = 0; i < atomNumber; i++)
+			atoms[i].drawAtom();
+	}
+
 };
 
-Atom a(1, 3.0f, 3.7f, 0.0f);
-Atom b(1, 0.2f, 0.2f, 0.0f);
+//molekula tömb
+Molekula m = Molekula();
 
 void onInitialization() {
 	glViewport(0, 0, 600, 600);
@@ -171,14 +207,11 @@ void onDisplay() {
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
 	
 	glBindVertexArray(vao);
-	
-	Line l(a, b);
-	l.create();
-	l.drawLine();
-	a.create();
-	a.drawAtom();
-	b.create();
-	b.drawAtom();
+	/*
+	* draw
+	*/
+	m.create();
+	m.drawMolekula();
 	glutSwapBuffers();
 }
 
