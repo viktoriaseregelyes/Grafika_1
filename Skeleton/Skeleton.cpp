@@ -65,7 +65,7 @@ unsigned int vao;
 
 class Atom {
 public: float charge;
-	  float quantity = 30 + rand() % 40;
+	  float quantity = 20 + rand() % 40;
 	  float x, y, z;
 	  const int nTesselatedVertices = 50;
 	  std::vector<vec4> points;
@@ -84,14 +84,14 @@ public: float charge;
 public:
 	vec4 getCenter() { return vec4(x / quantity, y / quantity, z / quantity, 1); }
 
-	void setX(float x1) { x = x1; }
-	void setY(float y1) { y = y1; }
-	void setZ(float z1) { z = z1; }
-
 	float getCX() { return x / quantity; }
 	float getCY() { return y / quantity; }
 	float getCZ() { return z / quantity; }
-
+	/*
+	void setCX(float x1) { x = x1; }
+	void setCY(float y1) { y = y1; }
+	void setCZ(float z1) { z = z1; }
+	*/
 	void color() {
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
 		if (charge < 0)
@@ -113,16 +113,37 @@ public:
 };
 
 class Line {
-public: std::vector<vec4> points;
+public: float x1, y1, z1, x2, y2, z2;
+	  std::vector<vec4> points;
 	  unsigned int vbo;
 
 	  Line(Atom a, Atom b) {
-		  points.push_back(a.getCenter());
-		  points.push_back(b.getCenter());
+		  x1 = a.getCX(); y1 = a.getCY(); z1 = a.getCZ();
+		  x2 = b.getCX(); y2 = b.getCY(); z2 = b.getCZ();
 	  }
 
 public:
 	void drawLine() {
+		points.push_back(vec4(x1, y1, z1));
+		float dx = abs(x1 - x2) * 0.01, dy = abs(y1 - y2) * 0.01, dz = abs(z1 - z2) * 0.01;
+		float x = x1, y = y1, z = z1;
+
+		while (x <= x2 && y <= y2 && z <= z2) {
+		if (x < x2)
+			x += dx;
+		else
+			x -= dx;
+		if (y < y2)
+			y += dy;
+		else
+			y -= dy;
+		if (z < z2)
+			z += dz;
+		else
+			z -= dz;
+			points.push_back(vec4(x, y, z));
+		}
+
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
@@ -132,7 +153,7 @@ public:
 		glUniform3f(location, 1.0f, 1.0f, 1.0f);
 
 		glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(vec4), &points[0], GL_STATIC_DRAW);
-		glDrawArrays(GL_LINES, 0, points.size());
+		glDrawArrays(GL_LINE_STRIP, 0, points.size());
 	}
 };
 
@@ -191,7 +212,7 @@ void onInitialization() {
 	glutInitWindowSize(600, 600);
 
 	molecules.push_back(Molekula());
-	molecules.push_back(Molekula());
+	//molecules.push_back(Molekula());
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -225,7 +246,7 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 	case 'd': q -= 0.1f; break;
 	case 'x': p += 0.1f; break;
 	case 'e': p -= 0.1f; break;
-	case ' ': molecules.clear(); molecules.push_back(Molekula()); molecules.push_back(Molekula()); break;
+	case ' ': molecules.clear(); molecules.push_back(Molekula()); /*molecules.push_back(Molekula());*/ break;
 	}
 	glutPostRedisplay();
 }
