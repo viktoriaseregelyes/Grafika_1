@@ -34,7 +34,7 @@
 #include "framework.h"
 
 // vertex shader in GLSL: It is a Raw string (C++11) since it contains new line characters
-const char * const vertexSource = R"(
+const char* const vertexSource = R"(
 	#version 330				// Shader 3.3
 	precision highp float;		// normal floats, makes no difference on desktop computers
 
@@ -47,7 +47,7 @@ const char * const vertexSource = R"(
 )";
 
 // fragment shader in GLSL
-const char * const fragmentSource = R"(
+const char* const fragmentSource = R"(
 	#version 330			// Shader 3.3
 	precision highp float;	// normal floats, makes no difference on desktop computers
 	
@@ -65,24 +65,32 @@ unsigned int vao;
 
 class Atom {
 public: float charge;
-		float quantity = -70 + (rand() % 140);
-		float x, y, z;
-		const int nTesselatedVertices = 60;
-		std::vector<vec4> points;
-		unsigned int vbo;
+	  float quantity = 30 + rand() % 40;
+	  float x, y, z;
+	  const int nTesselatedVertices = 50;
+	  std::vector<vec4> points;
+	  unsigned int vbo;
 
-	Atom(float c, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
-		charge = 1 / c;
-		x = x1; y = y1; z = z1;
+	  Atom(float c, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
+		  charge = 1 / c;
+		  x = x1; y = y1; z = z1;
 
-		for (int i = 0; i < nTesselatedVertices; i++) {
-			float phi = i * 2.0f * M_PI / 50;
-			points.push_back(vec4((cosf(phi) + x) / quantity, (sinf(phi) + y) / quantity, z / quantity, 1));
-		}
-	}
+		  for (int i = 0; i < nTesselatedVertices; i++) {
+			  float phi = i * 2.0f * M_PI / 50;
+			  points.push_back(vec4((cosf(phi) + x) / quantity, (sinf(phi) + y) / quantity, z / quantity, 1));
+		  }
+	  }
 
 public:
 	vec4 getCenter() { return vec4(x / quantity, y / quantity, z / quantity, 1); }
+
+	void setX(float x1) { x = x1; }
+	void setY(float y1) { y = y1; }
+	void setZ(float z1) { z = z1; }
+
+	float getCX() { return x / quantity; }
+	float getCY() { return y / quantity; }
+	float getCZ() { return z / quantity; }
 
 	void color() {
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
@@ -102,22 +110,18 @@ public:
 		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec4), &points[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
 	}
-
-	~Atom() {
-		glDeleteBuffers(1, &vbo);
-	}
 };
 
 class Line {
 public: std::vector<vec4> points;
-		unsigned int vbo;
+	  unsigned int vbo;
 
 	  Line(Atom a, Atom b) {
 		  points.push_back(a.getCenter());
 		  points.push_back(b.getCenter());
 	  }
 
-public:	
+public:
 	void drawLine() {
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -128,38 +132,35 @@ public:
 		glUniform3f(location, 1.0f, 1.0f, 1.0f);
 
 		glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(vec4), &points[0], GL_STATIC_DRAW);
-		glDrawArrays(GL_LINE_STRIP, 0, points.size());
-	}
-
-	~Line() {
-		glDeleteBuffers(1, &vbo);
+		glDrawArrays(GL_LINES, 0, points.size());
 	}
 };
 
 class Molekula {
 public: std::vector<Atom> atoms;
-		std::vector<Line> lines;
-		std::vector<float> charges;
-		int atomNumber = (int)rand() % 6 + 2;
-		int lineNumber = 0;
+	  std::vector<Line> lines;
+	  std::vector<float> charges;
+	  int atomNumber = (int)rand() % 6 + 2;
+	  int lineNumber = 0;
 
-	Molekula() {
-		ChargeMaker();
-		int random;
-		for (int i = 0; i < atomNumber; i++) {
-			atoms.push_back(Atom(charges.at(i), MakePoint(), MakePoint(), 0.0f));
+	  Molekula() {
+		  ChargeMaker();
+		  int random;
+		  for (int i = 0; i < atomNumber; i++) {
+			  if( i == 0 )
+				atoms.push_back(Atom(charges.at(i)));
 
-			if (i > 0) {
-				random = (int)(rand() % i);
-				lines.push_back(Line(atoms.at(i), atoms.at(random)));
-				lineNumber++;
-			}
-		}
-	}
+			  if (i > 0) {
+				  random = (int)(rand() % i);
+				  atoms.push_back(Atom(charges.at(i), atoms.at(random).getCX() + cosf((rand() % (2 * 314)) / 100) * 10, atoms.at(random).getCY() + sinf((rand() % (2 * 314)) / 100) * 10, atoms.at(random).getCZ()));
+
+				  lines.push_back(Line(atoms.at(i), atoms.at(random)));
+				  lineNumber++;
+			  }
+		  }
+	  }
 
 public:
-	float MakePoint() { return -10 + (rand() % 20); }
-
 	void ChargeMaker() {
 		float sum;
 		float num;
@@ -184,14 +185,13 @@ public:
 };
 
 std::vector<Molekula> molecules;
-int molekulaNumber = 0;
 
 void onInitialization() {
 	glViewport(0, 0, 600, 600);
 	glutInitWindowSize(600, 600);
 
 	molecules.push_back(Molekula());
-	molekulaNumber++;
+	molecules.push_back(Molekula());
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -210,24 +210,24 @@ void onDisplay() {
 
 	int location = glGetUniformLocation(gpuProgram.getId(), "MVP");
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
-	
+
 	glBindVertexArray(vao);
-	
-	for (int i = 0; i < molekulaNumber; i++)
-		molecules.at(i).drawMolekula();
+
+	for (int i = 0; i < molecules.size(); i++)
+		molecules[i].drawMolekula();
 
 	glutSwapBuffers();
 }
 
 void onKeyboard(unsigned char key, int pX, int pY) {
 	switch (key) {
-		case 's': q += 0.1f; break;
-		case 'd': q -= 0.1f; break;
-		case 'x': p += 0.1f; break;
-		case 'e': p -= 0.1f; break;
-		case ' ': molecules.push_back(Molekula()); molekulaNumber++; break;
+	case 's': q += 0.1f; break;
+	case 'd': q -= 0.1f; break;
+	case 'x': p += 0.1f; break;
+	case 'e': p -= 0.1f; break;
+	case ' ': molecules.clear(); molecules.push_back(Molekula()); molecules.push_back(Molekula()); break;
 	}
-	glutPostRedisplay();	
+	glutPostRedisplay();
 }
 
 void onKeyboardUp(unsigned char key, int pX, int pY) {
@@ -243,7 +243,7 @@ void onMouse(int button, int state, int pX, int pY) {
 	float cX = 2.0f * pX / windowWidth - 1;
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 
-	char * buttonStat;
+	char* buttonStat;
 	switch (state) {
 	case GLUT_DOWN: buttonStat = "pressed"; break;
 	case GLUT_UP:   buttonStat = "released"; break;
