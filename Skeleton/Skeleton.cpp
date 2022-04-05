@@ -64,28 +64,35 @@ float p = 0, q = 0;
 unsigned int vao;
 
 class Atom {
-public: float charge = (1,6 * rand()) % 5;
-		float quantity = 1;
+public: float charge = -10 + (rand() % 20);
+		float quantity = -30 + (rand() % 60);
 		float x, y, z;
 		const int nTesselatedVertices = 60;
 		std::vector<vec4> points;
 		unsigned int vbo;
 
-	Atom(float q, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
-		quantity *= q;
+	Atom(float c, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
+		charge *= c;
 		x = x1; y = y1; z = z1;
 	}
 
 public:
 	vec4 getCenter() { return vec4(x / quantity, y / quantity, z / quantity, 1); }
 
+	void color() {
+		int location = glGetUniformLocation(gpuProgram.getId(), "color");
+		if (charge < 0)
+			glUniform3f(location, 0.0f, 0.0f, 1 / (-charge));
+		else
+			glUniform3f(location, 1 / charge, 0.0f, 0.0f);
+	}
+
 	void create() {
 		for (int i = 0; i < nTesselatedVertices; i++) {
 			float phi = i * 2.0f * M_PI / 50;
 			points.push_back(vec4((cosf(phi) + x) / quantity, (sinf(phi) + y) / quantity, z / quantity, 1));
 		}
-		int location = glGetUniformLocation(gpuProgram.getId(), "color");
-		glUniform3f(location, 0.0f, 0.0f, 1 / charge);
+		color();
 
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -133,10 +140,13 @@ public: std::vector<Atom> atoms;
 	Molekula() {
 		int atomNumber = (int) rand() % 6 + 2;
 		for (int i = 0; i < atomNumber; i++) {
-			atoms.push_back(Atom(50));
+			atoms.push_back(Atom(1));
 		}
 	}
 };
+
+Atom a(1, 3.0f, 3.7f, 0.0f);
+Atom b(1, 0.2f, 0.2f, 0.0f);
 
 void onInitialization() {
 	glViewport(0, 0, 600, 600);
@@ -161,8 +171,7 @@ void onDisplay() {
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
 	
 	glBindVertexArray(vao);
-	Atom a(50, 6.0f, 8.0f, 0.0f);
-	Atom b(50, 10.0f, 0.0f, 0.0f);
+	
 	Line l(a, b);
 	l.create();
 	l.drawLine();
