@@ -166,7 +166,7 @@ public: std::vector<Atom> atoms;
 		  int random;
 		  for (int i = 0; i < atomNumber; i++) {
 			  if( i == 0 )
-				atoms.push_back(Atom(charges.at(i)));
+				atoms.push_back(Atom(charges.at(i), CenterPointMaker(), CenterPointMaker(), 0.0f));
 
 			  if (i > 0) {
 				  random = (int)(rand() % i);
@@ -179,6 +179,8 @@ public: std::vector<Atom> atoms;
 	  }
 
 public:
+	float CenterPointMaker() { return (-150 + rand() % 300) / 10; }
+
 	void ChargeMaker() {
 		float sum;
 		float num;
@@ -205,8 +207,7 @@ public:
 std::vector<Molekula> molecules;
 
 void onInitialization() {
-	glViewport(0, 0, 600, 600);
-	glutInitWindowSize(600, 600);
+	glViewport(0, 0, windowWidth, windowHeight);
 
 	molecules.push_back(Molekula());
 	//molecules.push_back(Molekula());
@@ -276,8 +277,4 @@ void onMouse(int button, int state, int pX, int pY) {
 
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME);
-	float sec = time / 1000.0f;
-	for(int i = 0; i < molecules.size(); i++)
-		molecules.at(i).Animate(sec);
-	glutPostRedisplay();
 }
