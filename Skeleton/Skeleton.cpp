@@ -113,43 +113,32 @@ public:
 };
 
 class Line {
-public: float x1, y1, z1, x2, y2, z2;
+public: float x1, y1, x2, y2;
 	  std::vector<vec4> points;
 	  unsigned int vbo;
 
 	  Line(Atom a, Atom b) {
-		  x1 = a.getCX(); y1 = a.getCY(); z1 = a.getCZ();
-		  x2 = b.getCX(); y2 = b.getCY(); z2 = b.getCZ();
+		  x1 = a.getCX(); y1 = a.getCY();
+		  x2 = b.getCX(); y2 = b.getCY();
 	  }
 
 public:
 	void drawLine() {
-		points.push_back(vec4(x1, y1, z1));
-		float dx = abs(x1 - x2) * 0.01, dy = abs(y1 - y2) * 0.01, dz = abs(z1 - z2) * 0.01;
-		float x = x1, y = y1, z = z1;
-		bool xmi = false, ymi = false, zmi = false;
+		points.push_back(vec4(x1, y1, 0));
+		float dx = abs(x1 - x2) * 0.01, dy = abs(y1 - y2) * 0.01;
+		float x = x1, y = y1;
+		bool xmi = false, ymi = false;
 
-		if (x < x2)
-			xmi = true;
-		if (y < y2)
-			ymi = true;
-		if (z < z2)
-			zmi = true;
+		if (x < x2) xmi = true;
+		if (y < y2) ymi = true;
 
-		while (((xmi && x <= x2) || (!xmi && x >= x2)) && ((ymi && y <= y2) || (!ymi && y >= y2)) && ((zmi && z <= z2) || (!zmi && z >= z2))) {
-		if (x < x2)
-			x += dx;
-		else
-			x -= dx;
-		if (y < y2)
-			y += dy;
-		else
-			y -= dy;
-		if (z < z2)
-			z += dz;
-		else
-			z -= dz;
-			points.push_back(vec4(x, y, z));
+		while (((xmi && x <= x2) || (!xmi && x >= x2)) && ((ymi && y <= y2) || (!ymi && y >= y2))) {
+			if (x < x2) x += dx;
+			else x -= dx;
+
+			if (y < y2) y += dy;
+			else y -= dy;
+			points.push_back(vec4(x, y, 0));
 		}
 
 		glGenBuffers(1, &vbo);
@@ -287,4 +276,8 @@ void onMouse(int button, int state, int pX, int pY) {
 
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME);
+	float sec = time / 1000.0f;
+	for(int i = 0; i < molecules.size(); i++)
+		molecules.at(i).Animate(sec);
+	glutPostRedisplay();
 }
