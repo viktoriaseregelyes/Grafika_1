@@ -111,11 +111,11 @@ public:
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), NULL);
+		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec3), &tarfoPoints[0], GL_STATIC_DRAW);
 	}
 
 	void drawAtom() {
 		color();
-		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec3), &tarfoPoints[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
 	}
 };
@@ -156,13 +156,13 @@ public:
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec3), NULL);
+		glBufferData(GL_ARRAY_BUFFER, tarfoPoints.size() * sizeof(vec3), &tarfoPoints[0], GL_STATIC_DRAW);
 	}
 
 	void drawLine() {
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
 		glUniform3f(location, 1.0f, 1.0f, 1.0f);
 
-		glBufferData(GL_ARRAY_BUFFER, tarfoPoints.size() * sizeof(vec3), &tarfoPoints[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_LINE_STRIP, 0, tarfoPoints.size());
 	}
 };
@@ -175,8 +175,10 @@ public: std::vector<Atom> atoms;
 	  int atomNumber = (int)rand() % 6 + 2;
 	  int lineNumber = 0;
 	  vec3 massCenter;
+	  float phi;
 
 	  Molekula() {
+		  Animate(0);
 		  ChargeMaker();
 		  int random;
 		  for (int i = 0; i < atomNumber; i++) {
@@ -193,6 +195,24 @@ public: std::vector<Atom> atoms;
 	  }
 
 public:
+	void Animate(float t) {
+		phi = t;
+	}
+
+	mat4 M() {
+		mat4 Mrotate(cosf(phi), sinf(phi), 0, 0,
+					-sinf(phi), cosf(phi), 0, 0,
+					0, 0, 1, 0,
+					0, 0, 0, 1);
+
+		mat4 Mtranslate(1, 0, 0, 0,
+						0, 1, 0, 0,
+						0, 0, 0, 0,
+						q, p, 0, 1);
+
+		return Mrotate * Mtranslate;
+	}
+
 	float CenterPointMaker() { return (-150 + rand() % 300) / 10; }
 
 	void Coulomb() {
@@ -232,6 +252,9 @@ public:
 	}
 
 	void drawMolekula() {
+		mat4 MVPTransform = M();
+		gpuProgram.setUniform(MVPTransform, "MVP");
+
 		for (int i = 0; i < lineNumber; i++) {
 			lines[i].create();
 			lines[i].drawLine();
@@ -262,14 +285,6 @@ void onDisplay() {
 	glClearColor(0.4f, 0.4f, 0.4f, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	float MVPtransf[4][4] = { 1, 0, 0, 0,
-							  0, 1, 0, 0,
-							  0, 0, 1, 0,
-							  q, p, 0 , 1 };
-
-	int location = glGetUniformLocation(gpuProgram.getId(), "MVP");
-	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);
-
 	for (int i = 0; i < molecules.size(); i++)
 		molecules.at(i).drawMolekula();
 
@@ -287,32 +302,16 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 	glutPostRedisplay();
 }
 
-void onKeyboardUp(unsigned char key, int pX, int pY) {
-}
+void onKeyboardUp(unsigned char key, int pX, int pY) { }
 
-void onMouseMotion(int pX, int pY) {
-	float cX = 2.0f * pX / windowWidth - 1;
-	float cY = 1.0f - 2.0f * pY / windowHeight;
-	printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
-}
+void onMouseMotion(int pX, int pY) { }
 
-void onMouse(int button, int state, int pX, int pY) {
-	float cX = 2.0f * pX / windowWidth - 1;
-	float cY = 1.0f - 2.0f * pY / windowHeight;
-
-	char* buttonStat;
-	switch (state) {
-	case GLUT_DOWN: buttonStat = "pressed"; break;
-	case GLUT_UP:   buttonStat = "released"; break;
-	}
-
-	switch (button) {
-	case GLUT_LEFT_BUTTON:   printf("Left button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY);   break;
-	case GLUT_MIDDLE_BUTTON: printf("Middle button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY); break;
-	case GLUT_RIGHT_BUTTON:  printf("Right button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY);  break;
-	}
-}
+void onMouse(int button, int state, int pX, int pY) { }
 
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME);
+	float sec = time / 10000.0f;
+	for(int i=0; i < molecules.size(); i++)
+		molecules.at(i).Animate(sec);
+	glutPostRedisplay();
 }
