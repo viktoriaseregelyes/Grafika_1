@@ -64,11 +64,11 @@ float p = 0, q = 0;
 unsigned int vao;
 
 vec3 transformToHyperbolic(vec3 v) {
-	return vec3(v.x, v.y, sqrt(v.x*v.x + v.y*v.y + 1));
+	return vec3(v.x, v.y, sqrt(v.x * v.x + v.y * v.y + 1));
 }
 
 vec3 transformToPoincare(vec3 v) {
-	return vec3(v.x / (v.z+1), v.y / (v.z + 1), 0);
+	return vec3(v.x / (v.z + 1), v.y / (v.z + 1), 0);
 }
 
 class Atom {
@@ -82,11 +82,11 @@ public: float charge;
 
 	  Atom(float c, float x1 = 0.0f, float y1 = 0.0f, float z1 = 0.0f) {
 		  charge = 1 / c;
-		  center = vec3(x1,y1,z1);
+		  center = vec3(x1, y1, z1);
 
 		  for (int i = 0; i < nTesselatedVertices; i++) {
 			  float phi = i * 2.0f * M_PI / nTesselatedVertices;
-			  points.push_back(vec3((cosf(phi) + center.x) * (1/quantity), (sinf(phi) + center.y) * (1 / quantity), center.z));
+			  points.push_back(vec3((cosf(phi) + center.x) * (1 / quantity), (sinf(phi) + center.y) * (1 / quantity), center.z));
 			  tarfoPoints.push_back(transformToPoincare(transformToHyperbolic(points.at(i))));
 		  }
 		  center.x *= (1 / quantity);
@@ -98,7 +98,7 @@ public:
 
 	float getQuantity() { return quantity; }
 
- 	void color() {
+	void color() {
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
 		if (charge < 0)
 			glUniform3f(location, 0.0f, 0.0f, -charge);
@@ -117,11 +117,6 @@ public:
 		color();
 		glBufferData(GL_ARRAY_BUFFER, nTesselatedVertices * sizeof(vec3), &tarfoPoints[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
-	}
-
-	~Atom() {
-		glDeleteBuffers(1, &vbo);
-		glDeleteVertexArrays(1, &vao);
 	}
 };
 
@@ -167,13 +162,8 @@ public:
 		int location = glGetUniformLocation(gpuProgram.getId(), "color");
 		glUniform3f(location, 1.0f, 1.0f, 1.0f);
 
- 		glBufferData(GL_ARRAY_BUFFER, tarfoPoints.size() * sizeof(vec3), &tarfoPoints[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, tarfoPoints.size() * sizeof(vec3), &tarfoPoints[0], GL_STATIC_DRAW);
 		glDrawArrays(GL_LINE_STRIP, 0, tarfoPoints.size());
-	}
-
-	~Line() {
-		glDeleteBuffers(1, &vbo);
-		glDeleteVertexArrays(1, &vao);
 	}
 };
 
@@ -185,16 +175,13 @@ public: std::vector<Atom> atoms;
 	  int atomNumber = (int)rand() % 6 + 2;
 	  int lineNumber = 0;
 	  vec3 massCenter;
-	  vec2 wTranslate;
-	  float phi;
 
 	  Molekula() {
-		  Animate(0);
 		  ChargeMaker();
 		  int random;
 		  for (int i = 0; i < atomNumber; i++) {
-			  if( i == 0 )
-				atoms.push_back(Atom(charges.at(i), CenterPointMaker(), CenterPointMaker(), 0.0f));
+			  if (i == 0)
+				  atoms.push_back(Atom(charges.at(i), CenterPointMaker(), CenterPointMaker(), 0.0f));
 
 			  if (i > 0) {
 				  random = (int)(rand() % i);
@@ -215,39 +202,19 @@ public:
 	void MassCenter() {
 		vec3 v1 = atoms.at(0).getCenter(), v2;
 		float q1 = atoms.at(0).getQuantity(), q2;
-		float l2, fi;
+		float l2;
 		int i = 0;
-		while (i != atomNumber - 2)
+		while (i != atomNumber - 1)
 		{
-			v2 = atoms.at(i+1).getCenter();
-			q2 = atoms.at(i+1).getQuantity();
+			v2 = atoms.at(i + 1).getCenter();
+			q2 = atoms.at(i + 1).getQuantity();
 			l2 = ((q1 / q2) * dot(v1, v2) / (1 + (q1 / q2)));
-			//fi = acosf(((v2*vec3(1, 0, 0))/(length(v1)*length(vec3(1, 0, 0)))));
-			
+
 			//vmi ami a lineon megkeresi, hol is van a tömegközéppont
 			//a lineon 2 pont jöhet szóba, az kell, ami a másik ponthoz közelebb van
 			q1 = (q1 + q2) / 2;
 			i++;
 		}
-	}
-
-	void Animate(float t) {
-		wTranslate = vec2(0, 0);
-		phi = t;
-	}
-
-	mat4 M() {
-		mat4 Mrotate(cosf(phi), sinf(phi), 0, 0,
-					-sinf(phi), cosf(phi), 0, 0,
-					0, 0, 1, 0,
-					0, 0, 0, 1);
-
-		mat4 Mtranslate(1, 0, 0, 0,
-						0, 1, 0, 0,
-						0, 0, 0, 0,
-						wTranslate.x, wTranslate.y, 0, 1);
-
-		return Mrotate * Mtranslate;
 	}
 
 	void ChargeMaker() {
@@ -265,12 +232,6 @@ public:
 	}
 
 	void drawMolekula() {
-		MassCenter();
-
-		mat4 MVPTransform = M();
-		gpuProgram.setUniform(MVPTransform, "MVP");
-		glBindVertexArray(vao);
-
 		for (int i = 0; i < lineNumber; i++) {
 			lines[i].create();
 			lines[i].drawLine();
@@ -280,14 +241,6 @@ public:
 			atoms[i].create();
 			atoms[i].drawAtom();
 		}
-	}
-
-	~Molekula() {
-		glDeleteVertexArrays(1, &vao);
-		atoms.clear();
-		lines.clear();
-		charges.clear();
-		coulomb.clear();
 	}
 };
 
@@ -300,6 +253,7 @@ void onInitialization() {
 	molecules.push_back(Molekula());
 
 	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
 }
@@ -337,15 +291,28 @@ void onKeyboardUp(unsigned char key, int pX, int pY) {
 }
 
 void onMouseMotion(int pX, int pY) {
+	float cX = 2.0f * pX / windowWidth - 1;
+	float cY = 1.0f - 2.0f * pY / windowHeight;
+	printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
 }
 
 void onMouse(int button, int state, int pX, int pY) {
+	float cX = 2.0f * pX / windowWidth - 1;
+	float cY = 1.0f - 2.0f * pY / windowHeight;
+
+	char* buttonStat;
+	switch (state) {
+	case GLUT_DOWN: buttonStat = "pressed"; break;
+	case GLUT_UP:   buttonStat = "released"; break;
+	}
+
+	switch (button) {
+	case GLUT_LEFT_BUTTON:   printf("Left button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY);   break;
+	case GLUT_MIDDLE_BUTTON: printf("Middle button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY); break;
+	case GLUT_RIGHT_BUTTON:  printf("Right button %s at (%3.2f, %3.2f)\n", buttonStat, cX, cY);  break;
+	}
 }
 
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME);
-	float sec = time / 10000.0f;
-	for(int i=0; i<molecules.size();i++)
-		molecules.at(i).Animate(sec);
-	glutPostRedisplay();
 }
