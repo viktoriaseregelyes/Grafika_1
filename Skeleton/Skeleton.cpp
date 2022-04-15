@@ -117,6 +117,7 @@ public:
 	void drawAtom() {
 		color();
 		glDrawArrays(GL_TRIANGLE_FAN, 0, nTesselatedVertices);
+		glDeleteBuffers(1, &vbo);
 	}
 };
 
@@ -164,6 +165,7 @@ public:
 		glUniform3f(location, 1.0f, 1.0f, 1.0f);
 
 		glDrawArrays(GL_LINE_STRIP, 0, tarfoPoints.size());
+		glDeleteBuffers(1, &vbo);
 	}
 };
 
@@ -192,6 +194,7 @@ public: std::vector<Atom> atoms;
 				  lineNumber++;
 			  }
 		  }
+		  massCenter = MassCenter();
 	  }
 
 public:
@@ -206,9 +209,9 @@ public:
 					0, 0, 0, 1);
 
 		mat4 Mtranslate(1, 0, 0, 0,
-						0, 1, 0, 0,
-						0, 0, 0, 0,
-						q, p, 0, 1);
+					0, 1, 0, 0,
+					0, 0, 0, 0,
+					massCenter.x + q, massCenter.y + p, 0, 1);
 
 		return Mrotate * Mtranslate;
 	}
@@ -219,22 +222,37 @@ public:
 
 	}
 
-	void MassCenter() {
-		vec3 v1 = atoms.at(0).getCenter(), v2;
+	vec3 MassCenter() {
+		vec3 v1 = atoms.at(0).getCenter(), v2, tvec;
 		float q1 = atoms.at(0).getQuantity(), q2;
-		float l2;
-		int i = 0;
+		float d, fi, x, y, len;
+		std::vector<vec3> vecs;
+		int i = 1;
 		while (i != atomNumber - 1)
 		{
-			v2 = atoms.at(i + 1).getCenter();
-			q2 = atoms.at(i + 1).getQuantity();
-			l2 = ((q1 / q2) * dot(v1, v2) / (1 + (q1 / q2)));
-
-			//vmi ami a lineon megkeresi, hol is van a tömegközéppont
-			//a lineon 2 pont jöhet szóba, az kell, ami a másik ponthoz közelebb van
+			v2 = atoms.at(i).getCenter();
+			q2 = atoms.at(i).getQuantity();
+			d = ((q1 / q2) * dot(v1, v2) / (1 + (q1 / q2)));
+			fi = acos(v2.x / length(v2));
+			x = d * sin(fi);
+			y = d * cos(fi);
+			vecs.push_back(vec3(x, y, 0));
+			vecs.push_back(vec3(-x, y, 0));
+			vecs.push_back(vec3(x, -y, 0));
+			vecs.push_back(vec3(-x, -y, 0));
+			len = dot(v1, vecs.at(0));
+			for (int j = 1; j < vecs.size(); j++) {
+				if (len > dot(v1, vecs.at(j))) {
+					len = dot(v1, vecs.at(j));
+					tvec = vecs.at(j);
+				}
+			}
 			q1 = (q1 + q2) / 2;
+			v1 = tvec;
+			vecs.clear();
 			i++;
 		}
+		return v1;
 	}
 
 	void ChargeMaker() {
@@ -311,7 +329,7 @@ void onMouse(int button, int state, int pX, int pY) { }
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME);
 	float sec = time / 10000.0f;
-	for(int i=0; i < molecules.size(); i++)
+	for (int i = 0; i < molecules.size(); i++)
 		molecules.at(i).Animate(sec);
 	glutPostRedisplay();
 }
